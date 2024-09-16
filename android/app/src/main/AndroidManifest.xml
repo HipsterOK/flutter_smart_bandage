@@ -1,17 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
-    <!-- Permissions for Bluetooth on Android 12 and below -->
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <!-- Разрешения для работы с Bluetooth и местоположением -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- Permissions for Bluetooth on Android 13 and above -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- Эти разрешения нужны для Android 12 и выше -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
 
     <!-- Permissions for location access -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:label="flutter_smart_bandage"
@@ -30,6 +38,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <service
+            android:name="flutter.plugins.workmanager.WorkManagerService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true"
+            android:foregroundServiceType="dataSync"/>
+
+        <receiver android:name="flutter.plugins.workmanager.WorkManagerBroadcastReceiver" android:exported="true"/>
+        <receiver android:name="flutter.plugins.workmanager.WorkManagerReceiver" android:exported="true"/>
+        <receiver android:name="flutter.plugins.workmanager.WorkManagerAlarmReceiver" android:exported="true"/>
+        <receiver android:name="flutter.plugins.workmanager.WorkManagerJobService" android:exported="true"/>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2"/>
