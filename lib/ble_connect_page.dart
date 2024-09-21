@@ -19,6 +19,7 @@ class _BleConnectPageState extends State<BleConnectPage> {
   List<DiscoveredDevice> foundDevices = [];
   String? selectedDeviceId;
   bool isBluetoothEnabled = false;
+  bool isScanning = false;
   StreamSubscription<BluetoothState>? _bluetoothStateSubscription;
 
   @override
@@ -28,7 +29,6 @@ class _BleConnectPageState extends State<BleConnectPage> {
       _checkBluetoothStatus();
     });
 
-    // Подписываемся на изменение состояния Bluetooth
     _bluetoothStateSubscription = FlutterBluetoothSerial.instance
         .onStateChanged()
         .listen((BluetoothState state) {
@@ -47,7 +47,6 @@ class _BleConnectPageState extends State<BleConnectPage> {
 
   Future<void> _requestPermissions() async {
     if (Platform.isAndroid) {
-      // Запрашиваем все необходимые разрешения
       Map<Permission, PermissionStatus> statuses = await [
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
@@ -62,14 +61,12 @@ class _BleConnectPageState extends State<BleConnectPage> {
     }
   }
 
-
   @override
   void dispose() {
-    _bluetoothStateSubscription?.cancel(); // Отписываемся при уничтожении виджета
+    _bluetoothStateSubscription?.cancel();
     super.dispose();
   }
 
-  // Проверяем статус Bluetooth при запуске
   Future<void> _checkBluetoothStatus() async {
     bool? isEnabled = await FlutterBluetoothSerial.instance.isEnabled;
     setState(() {
@@ -80,7 +77,6 @@ class _BleConnectPageState extends State<BleConnectPage> {
     }
   }
 
-  // Включаем Bluetooth и подключаемся к устройству
   Future<void> _enableBluetoothAndConnect() async {
     await FlutterBluetoothSerial.instance.requestEnable();
     setState(() {
@@ -89,7 +85,6 @@ class _BleConnectPageState extends State<BleConnectPage> {
     _connectToSavedDevice();
   }
 
-  // Загружаем сохранённое устройство из SharedPreferences
   Future<void> _loadSelectedDevice() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? savedDeviceId = prefs.getString('selectedDeviceId');
@@ -100,7 +95,6 @@ class _BleConnectPageState extends State<BleConnectPage> {
     }
   }
 
-  // Сохраняем устройство
   Future<void> _saveSelectedDevice(String deviceId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('selectedDeviceId', deviceId);
@@ -109,14 +103,12 @@ class _BleConnectPageState extends State<BleConnectPage> {
     });
   }
 
-  // Подключаемся к сохранённому устройству и автоматически переходим на BleDataPage
   Future<void> _connectToSavedDevice() async {
     await _loadSelectedDevice();
     if (selectedDeviceId != null) {
       flutterReactiveBle.connectToDevice(id: selectedDeviceId!).listen(
             (connectionState) {
           if (connectionState.connectionState == DeviceConnectionState.connected) {
-            // Переход на BleDataPage при успешном подключении
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -136,23 +128,24 @@ class _BleConnectPageState extends State<BleConnectPage> {
     }
   }
 
-  // Сканируем устройства и позволяем пользователю выбрать одно из них
   Future<void> _scanAndSelectDevice() async {
     if (await Permission.bluetoothScan.isGranted && await Permission.bluetoothConnect.isGranted) {
       setState(() {
         foundDevices.clear();
+        isScanning = true;
       });
 
       flutterReactiveBle.scanForDevices(withServices: []).listen((device) {
         if (!foundDevices.any((element) => element.id == device.id)) {
           setState(() {
             foundDevices.add(device);
+            isScanning = false;
           });
         }
       });
     } else {
       print("Необходимо предоставить разрешения на Bluetooth для поиска устройств.");
-      await _requestPermissions(); // Запрашиваем разрешения, если они ещё не предоставлены
+      await _requestPermissions();
     }
   }
 
@@ -160,41 +153,91 @@ class _BleConnectPageState extends State<BleConnectPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Подключение к устройству"),
+        title: Text(
+          "Подключение к устройству",
+          style: TextStyle(color: Colors.black),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 1,
       ),
-      body: isBluetoothEnabled
-          ? Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: _scanAndSelectDevice,
-            child: Text("Сканировать устройства"),
-          ),
-          SizedBox(height: 20),
-          Expanded(
-            child: ListView.builder(
-              itemCount: foundDevices.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(foundDevices[index].name),
-                  subtitle: Text(foundDevices[index].id),
-                  trailing: selectedDeviceId == foundDevices[index].id
-                      ? Icon(Icons.check, color: Colors.green)
-                      : null,
-                  onTap: () {
-                    _saveSelectedDevice(foundDevices[index].id);
-                    _connectToSavedDevice();
-                  },
-                );
-              },
+      body: Container(
+        color: Colors.white,
+        padding: EdgeInsets.all(16.0),
+        child: isBluetoothEnabled
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: foundDevices.length,
+                itemBuilder: (context, index) {
+                  return Card(
+                    color: Colors.white,
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.all(16.0),
+                      title: Text(
+                        foundDevices[index].name,
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        foundDevices[index].id,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      trailing: selectedDeviceId == foundDevices[index].id
+                          ? Icon(Icons.check_circle, color: Colors.greenAccent)
+                          : null,
+                      onTap: () {
+                        _saveSelectedDevice(foundDevices[index].id);
+                        _connectToSavedDevice();
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 30.0),
+              child: ElevatedButton(
+                onPressed: _scanAndSelectDevice,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 32.0),
+                ),
+                child: Text(
+                  isScanning ? "Обновить список" : "Сканировать устройства",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        )
+            : Center(
+          child: ElevatedButton(
+            onPressed: _enableBluetoothAndConnect,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 32.0),
+            ),
+            child: Text(
+              "Включить Bluetooth",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
-        ],
-      )
-          : Center(
-        child: ElevatedButton(
-          onPressed: _enableBluetoothAndConnect,
-          child: Text("Включить Bluetooth"),
         ),
       ),
     );
